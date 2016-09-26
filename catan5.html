@@ -1,0 +1,225 @@
+<html>
+<head>
+<title>Chris' Catan Manager</title>
+<h1>Catan Map</h1>
+<body onLoad="drawCanvas();">
+
+<script>
+var cards = Array("wheat", "wheat", "wheat", "wheat", 
+	              "wood",  "wood",  "wood",  "wood", 
+	              "sheep", "sheep", "sheep", "sheep",
+	              "brick", "brick", "brick", 
+	              "stone", "stone", "stone", 
+	              "desert"); 
+
+var rollTokens = Array("t2", "t3", "t3", "t4", "t4", "t5", "t5", "t6", "t6", 
+	                   "t8", "t8", "t9", "t9", "t10", "t10", "t11", "t11", 
+	                   "t12" );
+
+
+var landCords = [             [100, 0], [200,0], [300,0],
+							[50, 75], [150, 75], [250, 75], [350, 75],
+						[0, 150], [100,150], [200,150], [300,150], [400,150],
+							[50, 225], [150, 225], [250, 225], [350, 225],
+							  [100, 300], [200,300], [300,300] ];
+
+var settlementCords = 	[           [200, 75], [300,75],
+								[150,100], [250,100], [350,100],
+								[150,150], [250,150], [350,150],
+						[100,175], [200,175], [300,175], [400,175],
+						[100,225], [200,225], [300,225], [400,225],
+								[150,250], [250,250], [350,250],
+								[150,300], [250,300], [350,300],
+             						[200, 325], [300,325] ];
+
+var settleSpots = [             [0, 0, 1, 4], [0, 1, 5, 2],
+                           [1, 0, 3, 4], [1, 1, 4, 5], [1, 2, 5, 6],
+                           [0, 3, 8, 4], [0, 4, 9, 5], [0, 5,10, 6], 
+                    [1, 3, 7, 8], [1, 4, 8, 9], [1, 5, 9,10], [1, 6,10,11], 
+                    [0, 7,12, 8], [0, 8, 9,13], [0, 9,14,10], [0, 10,15,11], 
+                           [1, 8,12,13], [1, 9,13,14], [1, 10,14,15],
+                           [0, 12,16,13], [0, 13,17,14], [0, 14,18,15],
+                               [1, 13,16,17],  [1,14,17,18]  ];
+
+// dots on the tokens 0-12
+var rollavg = [ 
+	["t2",1],  ["t3",2],  ["t4",3],   ["t5",4],   ["t6", 5], ["t7", 0], 
+	["t8", 5], ["t9", 4], ["t10", 3], ["t11", 2], ["t12", 1]
+	];
+
+function shuffle(array) {
+  var currentIndex = array.length, temporaryValue, randomIndex;
+
+  // While there remain elements to shuffle...
+  while (0 !== currentIndex) {
+
+    // Pick a remaining element...
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex -= 1;
+
+    // And swap it with the current element.
+    temporaryValue = array[currentIndex];
+    array[currentIndex] = array[randomIndex];
+    array[randomIndex] = temporaryValue;
+  }
+
+  return array;
+}
+
+var shuffledCards;
+var shuffledTokens;
+var rankedSettlements;
+
+function getPoints(token)
+{
+	for (var i=0; i< rollavg.length; i++) {
+		if (rollavg[i][0] == token) {
+			return rollavg[i][1];
+		}
+	}
+	return 0;
+}
+
+function initBoard()
+{
+	shuffledCards = shuffle(cards);
+	shuffledTokens = shuffle(rollTokens);
+
+	// At this point the Tokens will be 1 less member then the 
+	// cards.  This is because the desert doesn't get a point value
+	// Therefore you need to insert the blank 7 at the exact offset 
+	// in the shuffled tokens list as to where the desert card is.
+	var blank = "desert";
+
+	for (var i=0; i < shuffledCards.length; i++) {
+		if (blank == shuffledCards[i]) {
+			shuffledTokens.splice.apply(shuffledTokens, [i, 0].concat(["t7"]));	
+		}
+	}
+}
+
+
+
+function cmp(a, b) {
+    return b[1] - a[1];
+}
+
+function rankSettleSpots() {
+
+	var ranked = [];
+
+	for (var i=0; i < settleSpots.length; i++) {
+
+		tally = getPoints(shuffledTokens[settleSpots[i][1]]);
+		tally += getPoints(shuffledTokens[settleSpots[i][2]]);
+		tally += getPoints(shuffledTokens[settleSpots[i][3]]);
+
+		ranked.push([i,tally]);
+	}
+
+	ranked.sort(cmp);
+	return ranked;
+}
+
+
+function drawBoard(ctx)
+{
+	var img = new Image();
+
+	for (var i=0; i<landCords.length; i++) {
+		img = document.getElementById(shuffledCards[i]);
+		ctx.drawImage(img, landCords[i][0], landCords[i][1]);
+	}
+}
+
+function drawSettlements(ctx, rankedSettlements)
+{
+	var img = new Image();
+	var num;
+ 	
+ 	ctx.globalAlpha=0.8;
+	
+	for (var i=0; i<rankedSettlements.length; i++) {
+		ctx.beginPath();
+		s = rankedSettlements[i][0];
+		xcord = settlementCords[s][0];
+		ycord = settlementCords[s][1];
+
+		ctx.font = "16px serif";
+		num = rankedSettlements[i][1];
+		txt = ctx.measureText(num);
+
+		if (num > 11) {
+
+			ctx.strokeStyle = "#00ff00";
+			ctx.lineWidth = 4;
+			ctx.arc(xcord, ycord,15,0,2*Math.PI);
+			ctx.stroke();
+		} 
+		ctx.fillStyle = "black";
+		ctx.arc(xcord, ycord,15,0,2*Math.PI);
+		ctx.fill();
+
+		ctx.fillStyle = "white"	
+		if (txt.width > 8) {
+			xcord -= 9;
+		} else {
+			xcord -= 4;
+		}
+		ctx.fillText(num, xcord, ycord+5);
+	}
+}
+
+function drawTokens(ctx)
+{
+	var img = new Image();
+
+	ctx.globalAlpha=1;
+	for (var i=0; i<landCords.length; i++) {
+		img = document.getElementById(shuffledTokens[i]);
+		ctx.drawImage(img, landCords[i][0], landCords[i][1]+30);
+	}
+}
+
+
+function drawCanvas() 
+{
+	var c   = document.getElementById("canvas");
+	var ctx = c.getContext("2d");
+
+	initBoard();
+	drawBoard(ctx);
+	drawTokens(ctx);
+	rankedSettlements = rankSettleSpots()
+	drawSettlements(ctx, rankedSettlements);
+}
+
+</script>
+
+
+<canvas id="canvas" width="600" height="400">
+<!-- Fallback content -->
+<p>We apologize, your browser does not support canvas at this time!</p>
+</canvas>
+
+<div style="display:none;">
+<img id="brick"  src="images/brick.gif">
+<img id="wheat"  src="images/wheat.gif">
+<img id="wood"   src="images/wood.gif">
+<img id="stone"  src="images/stone.gif">
+<img id="sheep"  src="images/sheep.gif">
+<img id="desert" src="images/desert.gif">
+<img id="t2"  src="images/t2.gif">
+<img id="t3"  src="images/t3.gif">
+<img id="t4"  src="images/t4.gif">
+<img id="t5"  src="images/t5.gif">
+<img id="t6"  src="images/t6.gif">
+<img id="t7"  src="images/t7.gif">
+<img id="t8"  src="images/t8.gif">
+<img id="t9"  src="images/t9.gif">
+<img id="t10" src="images/t10.gif">
+<img id="t11" src="images/t11.gif">
+<img id="t12" src="images/t12.gif">
+</div>
+</body>
+</html>
